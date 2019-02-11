@@ -15,6 +15,7 @@ from keras.layers import Dense, Conv1D, Flatten, Embedding, Dropout, MaxPooling1
 from keras.utils import to_categorical
 import matplotlib.pyplot as plt
 pd.set_option('display.expand_frame_repr', False)
+from keras.models import load_model
 
 class Classifier_LSTM():
     def __init__(self, dataFramePath):
@@ -24,7 +25,7 @@ class Classifier_LSTM():
                      'Team & Organization': 10, 'Planning': 11}
         self.max_length = 100
         self.vocabulary_size = 0
-        self.lstm_size = 100
+        self.lstm_size = 20
         pass
 
 
@@ -104,7 +105,7 @@ class Classifier_LSTM():
         Y = to_categorical(Y, 12)
         model = self.getModel(embedding_matrix)
 
-        history = model.fit(padded_sent, Y, batch_size=64, validation_split=0.2, epochs=5)
+        history = model.fit(padded_sent, Y, batch_size=64, validation_split=0.2, epochs=20)
 
         if save:
             model.save('lstm.h5')
@@ -127,9 +128,23 @@ class Classifier_LSTM():
             plt.legend(['train', 'test'], loc='upper left')
             plt.show()
             
+    def predict(self):
+        tokenizer = self.getTokenizer()
+        padded_sent = self.getPaddedSent(tokenizer)
+        model = load_model('lstm.h5')
+        res = model.predict(padded_sent)
+        prob = [round(max(r), 4) for r in res]
+        labels = np.argmax(res, axis=-1)
+        self.df['prob'] = prob
+        self.df['predict'] = labels
+        self.df['predict'] = self.df['predict'].apply(self.getClassName)
+        self.df.to_csv('test.csv', index=False)
 
 ob = Classifier_LSTM('training_data.h5')
-ob.trainOnData()
+ob.trainOnData(True, True)
+
+testob = Classifier_LSTM('test_data.h5')
+testob.predict()
 
 
 
